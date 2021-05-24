@@ -1062,7 +1062,7 @@ class CMG(FlowGrid):
         self.out_dir = 'output'
         self.out_props = {}
 
-    def CORNER(self, fname, cp_type):
+    def CORNER(self, fname, cp_type, fname2 = ''):
         """
         Builds corner point grid (*GRID *CORNER) geometry from a CMG file
 
@@ -1079,6 +1079,11 @@ class CMG(FlowGrid):
 
             Support has not been added for 'COORD'
         """
+
+        """
+        fname2 is used to define external file for ZCORN, --Wei Jia 5/23/2021
+        """
+
         print('Building corner point grid')
         with open(fname, "r") as fp:
             # Read header
@@ -1107,12 +1112,23 @@ class CMG(FlowGrid):
                 elif cp_type[2] == 'YCORN':  # TODO: Implement YCORN
                     pass
 
-                for line in fp:
-                    item = line.split()
-                    if len(item) > 0:
-                        if item[0] == "ZCORN" or item[0] == "*ZCORN":
-                            break
-                Z = self.read_ZCORN(fp)
+                
+                if fname2:
+                    with open(fname2, "r") as fp2:
+                        for line in fp2:
+                            item = line.split()
+                            if len(item) > 0:
+                                if item[0] == "ZCORN" or item[0] == "*ZCORN":
+                                    break
+                        Z = self.read_ZCORN(fp2)
+                else:
+                    for line in fp:
+                        item = line.split()
+                        if len(item) > 0:
+                            if item[0] == "ZCORN" or item[0] == "*ZCORN":
+                                break
+                    Z = self.read_ZCORN(fp)
+                    
                 X, Y, Z = self._calc_coords(X, Y, Z)
         self.structured_grid(X, Y, Z)
 
@@ -1678,7 +1694,7 @@ class CMG(FlowGrid):
         modify = False
         with open(fname, "r") as fp:
             for line in fp:
-                if not line[:1].isdigit():
+                if not line.strip()[:1].isdigit():
                     if line.startswith('*MOD'):
                         modify = True
                     continue # it's a keyword
@@ -1903,6 +1919,8 @@ class CMG(FlowGrid):
                             if item[0] == 'I':
                                 J = None
                                 prop_i = []
+                                line_tmp = line.replace('I =','I = ')
+                                item = line_tmp.split()
                                 I = item[2:]
                                 prev_digit = False
                                 for i in range(len(line)):
@@ -1918,7 +1936,9 @@ class CMG(FlowGrid):
 
                             # Check if there are any missing values in J line
                             skip_i = []
-                            if item[0] == 'J=':
+                            if line.strip().startswith('J='):
+                                line_tmp = line.replace('J=','J= ')
+                                item = line_tmp.split()
                                 JIdx = item[1]
                                 J = item[2:]
                                 for i in range(len(prop_i)):
